@@ -1,6 +1,6 @@
 <?php
 require_once 'layout.php';
-renderHeader('イベント作成 - 調整さんアプリ');
+renderHeader('イベント作成 - ' . SITE_NAME);
 ?>
 
 <div class="container mt-5">

@@ -3,36 +3,43 @@ require_once 'functions.php';
 
 // POSTリクエストの確認
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: create.php");
+    header("Location: index.php");
     exit;
 }
 
 // フォームデータの取得
-$title = $_POST['title'] ?? '';
-$description = $_POST['description'] ?? '';
-$creator_name = $_POST['creator_name'] ?? '';
-$creator_email = $_POST['creator_email'] ?? '';
-$dates = $_POST['dates'] ?? [];
-$start_times = $_POST['start_times'] ?? [];
-$end_times = $_POST['end_times'] ?? [];
+$event_id = $_POST['event_id'] ?? '';
+$participant_name = $_POST['participant_name'] ?? '';
+$participant_email = $_POST['participant_email'] ?? '';
+$date_option_ids = $_POST['date_option_ids'] ?? [];
+$availability = $_POST['availability'] ?? [];
+$comment = $_POST['comment'] ?? [];
 
 // 基本的なバリデーション
 $errors = [];
 
-if (empty($title)) {
-    $errors[] = 'イベント名は必須です';
+if (empty($event_id)) {
+    $errors[] = 'イベントIDが指定されていません';
 }
 
-if (empty($creator_name)) {
-    $errors[] = '主催者名は必須です';
+if (empty($participant_name)) {
+    $errors[] = 'お名前は必須です';
 }
 
-if (empty($creator_email) || !filter_var($creator_email, FILTER_VALIDATE_EMAIL)) {
+if (empty($participant_email) || !filter_var($participant_email, FILTER_VALIDATE_EMAIL)) {
     $errors[] = '有効なメールアドレスを入力してください';
 }
 
-if (empty($dates)) {
-    $errors[] = '少なくとも1つの日程候補が必要です';
+if (empty($date_option_ids)) {
+    $errors[] = '日程候補がありません';
+}
+
+// イベント情報の取得（存在確認）
+if (!empty($event_id)) {
+    $event = getEvent($event_id);
+    if (!$event) {
+        $errors[] = '指定されたイベントは存在しません';
+    }
 }
 
 // エラーがある場合
@@ -63,36 +70,29 @@ try {
     // トランザクション開始
     $pdo->beginTransaction();
     
-    // イベントの作成
-    $event_id = createEvent($title, $description, $creator_name, $creator_email);
+    // 各日程候補に対する回答を登録
+    $responses_added = 0;
     
-    if (!$event_id) {
-        throw new Exception('イベントの作成に失敗しました');
-    }
-    
-    // 日程候補を追加
-    $date_options_added = 0;
-    
-    foreach ($dates as $index => $date) {
-        if (empty($date)) continue;
+    foreach ($date_option_ids as $date_option_id) {
+        $avail = $availability[$date_option_id] ?? '';
         
-        $start_time = !empty($start_times[$index]) ? $start_times[$index] : null;
-        $end_time = !empty($end_times[$index]) ? $end_times[$index] : null;
+        // 未回答の場合はスキップ
+        if (empty($avail)) continue;
         
-        if (addDateOption($event_id, $date, $start_time, $end_time)) {
-            $date_options_added++;
+        $comm = $comment[$date_option_id] ?? '';
+        
+        if (addResponse($event_id, $date_option_id, $participant_name, $participant_email, $avail, $comm)) {
+            $responses_added++;
         }
-    }
-    
-    if ($date_options_added === 0) {
-        throw new Exception('日程候補の追加に失敗しました');
     }
     
     // トランザクションをコミット
     $pdo->commit();
     
-    // 成功ページにリダイレクト
-    $_SESSION['success_message'] = 'イベントを作成しました。下記のURLを参加者に共有してください。';
+    // 成功メッセージをセット
+    $_SESSION['success_message'] = '回答を送信しました。';
+    
+    // イベントページにリダイレクト
     header("Location: event.php?id=" . $event_id);
     exit;
     

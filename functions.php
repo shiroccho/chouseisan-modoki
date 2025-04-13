@@ -1,26 +1,16 @@
 <?php
-// エラー表示を有効化（デバッグ用）
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+require_once 'config.php';
 
-// データベース接続情報
-$host = '192.168.0.132';
-$dbname = 'schedule_app';
-$user = 'postgres';
-$password = 'postgres'; // 実際のパスワードに変更してください
-
-// PDOでデータベースに接続
+// データベース接続関数
 function connectDB() {
-    global $host, $dbname, $user, $password;
     try {
-        $dsn = "pgsql:host=$host;dbname=$dbname";
+        $dsn = "pgsql:host=" . DB_HOST . ";dbname=" . DB_NAME;
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
         ];
-        $pdo = new PDO($dsn, $user, $password, $options);
+        $pdo = new PDO($dsn, DB_USER, DB_PASSWORD, $options);
         return $pdo;
     } catch (PDOException $e) {
         die("データベース接続エラー: " . $e->getMessage());
@@ -33,8 +23,8 @@ function createEvent($title, $description, $creator_name, $creator_email) {
     $event_id = bin2hex(random_bytes(16)); // ユニークなIDを生成
     
     try {
-        $stmt = $pdo->prepare("INSERT INTO events (event_id, title, description, creator_name, creator_email, created_at) 
-                              VALUES (:event_id, :title, :description, :creator_name, :creator_email, NOW())");
+        $stmt = $pdo->prepare("INSERT INTO events (event_id, title, description, creator_name, creator_email) 
+                              VALUES (:event_id, :title, :description, :creator_name, :creator_email)");
         
         $stmt->bindParam(':event_id', $event_id);
         $stmt->bindParam(':title', $title);
@@ -71,10 +61,13 @@ function addDateOption($event_id, $date, $start_time, $end_time) {
 }
 
 // 参加者の回答を登録する関数
-function addResponse($event_id, $date_option_id, $participant_name, $participant_email, $availability) {
+function addResponse($event_id, $date_option_id, $participant_name, $participant_email, $availability, $comment = '') {
     $pdo = connectDB();
     
     try {
+        // トランザクション開始
+        $pdo->beginTransaction();
+        
         // 既存の回答を削除（上書き更新）
         $stmt = $pdo->prepare("DELETE FROM responses WHERE event_id = :event_id AND 
                               date_option_id = :date_option_id AND participant_email = :email");
@@ -84,17 +77,25 @@ function addResponse($event_id, $date_option_id, $participant_name, $participant
         $stmt->execute();
         
         // 新しい回答を登録
-        $stmt = $pdo->prepare("INSERT INTO responses (event_id, date_option_id, participant_name, participant_email, availability, created_at) 
-                              VALUES (:event_id, :date_option_id, :participant_name, :participant_email, :availability, NOW())");
+        $stmt = $pdo->prepare("INSERT INTO responses (event_id, date_option_id, participant_name, participant_email, availability, comment) 
+                              VALUES (:event_id, :date_option_id, :participant_name, :participant_email, :availability, :comment)");
         
         $stmt->bindParam(':event_id', $event_id);
         $stmt->bindParam(':date_option_id', $date_option_id);
         $stmt->bindParam(':participant_name', $participant_name);
         $stmt->bindParam(':participant_email', $participant_email);
         $stmt->bindParam(':availability', $availability);
+        $stmt->bindParam(':comment', $comment);
         
-        return $stmt->execute();
+        $result = $stmt->execute();
+        
+        // トランザクションをコミット
+        $pdo->commit();
+        
+        return $result;
     } catch (PDOException $e) {
+        // トランザクションをロールバック
+        $pdo->rollBack();
         error_log("データベースエラー（addResponse）: " . $e->getMessage());
         return false;
     }
@@ -170,7 +171,7 @@ function getSummary($event_id) {
 }
 
 // 参加者リストを取得する関数
-function getResponses($event_id) {
+function getParticipants($event_id) {
     $pdo = connectDB();
     
     try {
@@ -191,7 +192,7 @@ function getResponses($event_id) {
         
         return $stmt->fetchAll();
     } catch (PDOException $e) {
-        error_log("データベースエラー（getResponses）: " . $e->getMessage());
+        error_log("データベースエラー（getParticipants）: " . $e->getMessage());
         return [];
     }
 }
@@ -204,7 +205,8 @@ function getParticipantResponses($event_id, $participant_email) {
         $stmt = $pdo->prepare("
             SELECT 
                 r.date_option_id,
-                r.availability
+                r.availability,
+                r.comment
             FROM 
                 responses r
             WHERE 
@@ -218,12 +220,61 @@ function getParticipantResponses($event_id, $participant_email) {
         
         $responses = [];
         while ($row = $stmt->fetch()) {
-            $responses[$row['date_option_id']] = $row['availability'];
+            $responses[$row['date_option_id']] = [
+                'availability' => $row['availability'],
+                'comment' => $row['comment']
+            ];
         }
         
         return $responses;
     } catch (PDOException $e) {
         error_log("データベースエラー（getParticipantResponses）: " . $e->getMessage());
         return [];
+    }
+}
+
+// 日付のフォーマット関数
+function formatDate($date) {
+    $timestamp = strtotime($date);
+    return date('Y年n月j日(', $timestamp) . get_day_of_week_jp(date('w', $timestamp)) . ')';
+}
+
+// 時間のフォーマット関数
+function formatTime($time) {
+    if (!$time) return '';
+    return date('H:i', strtotime($time));
+}
+
+// 曜日の日本語表記を取得
+function get_day_of_week_jp($w) {
+    $week = ['日', '月', '火', '水', '木', '金', '土'];
+    return $week[$w];
+}
+
+// 可用性の日本語表記を取得
+function getAvailabilityText($availability) {
+    switch ($availability) {
+        case 'available':
+            return '○';
+        case 'maybe':
+            return '△';
+        case 'unavailable':
+            return '×';
+        default:
+            return '-';
+    }
+}
+
+// 可用性の色を取得
+function getAvailabilityColor($availability) {
+    switch ($availability) {
+        case 'available':
+            return 'success';
+        case 'maybe':
+            return 'warning';
+        case 'unavailable':
+            return 'danger';
+        default:
+            return 'secondary';
     }
 }
