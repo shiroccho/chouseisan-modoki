@@ -156,10 +156,11 @@ function getSummary($event_id) {
                 d.event_id = :event_id
             GROUP BY 
                 d.id, d.date, d.start_time, d.end_time
-            ORDER BY 
-                available_count DESC, maybe_count DESC, d.date, d.start_time
-        ");
-        
+            ORDER BY
+                d.date, d.start_time
+                ");
+//               available_count DESC, maybe_count DESC, d.date, d.start_time 
+
         $stmt->bindParam(':event_id', $event_id);
         $stmt->execute();
         

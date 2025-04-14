@@ -1,7 +1,14 @@
 # スケジュール調整アプリ
 
-PHP と PostgreSQL を使用した、イベントやミーティングの日程調整を行うためのWebアプリケーションです。
+PHP と PostgreSQL を使用した、イベントやミーティングの日程調整を行うためのWebアプリケーションです。調整さんのアイディアをぱくってオンプレ版にしてます
 
+![Static Badge](https://img.shields.io/badge/Linux-Debian-blue) 
+![Static Badge](https://img.shields.io/badge/Language-PHP-red)
+![Static Badge](https://img.shields.io/badge/DB-Postgresql-blue)
+![Static Badge](https://img.shields.io/badge/%E4%BA%8B%E6%A5%AD%E5%A0%B4-%E5%A4%A7%E5%BA%9C-blue)
+
+![タイトルスクショ](./ss0.png)
+![集計スクショ](./ss1.png)
 ## 主な機能
 
 - イベントの作成機能
@@ -22,8 +29,8 @@ PHP と PostgreSQL を使用した、イベントやミーティングの日程�
 1. リポジトリをクローンするか、ダウンロードして解凍します。
 
 ```
-git clone https://github.com/yourusername/schedule-app.git
-cd schedule-app
+git clone http://192.168.30.40:8080/git/shiratani/Schedule_adjustment_app.git
+cd Schedule_adjustment_app
 ```
 
 2. PostgreSQLデータベースを作成し、テーブルを設定します。

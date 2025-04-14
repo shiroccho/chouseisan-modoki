@@ -1,13 +1,13 @@
 <?php
 // データベース接続情報
-define('DB_HOST', '192.168.0.132');
+define('DB_HOST', '192.168.35.183');
 define('DB_NAME', 'schedule_app');
 define('DB_USER', 'postgres');
 define('DB_PASSWORD', 'postgres'); // 実際のパスワードに変更してください
 
 // 設定項目
-define('SITE_NAME', '調整さんアプリ');
-define('BASE_URL', 'http://192.168.0.132/chouseisan-modoki/'); // 実際のURLに変更してください
+define('SITE_NAME', '調整さんもどき');
+define('BASE_URL', 'http://192.168.35.183:8085/Schedule_adjustment_app/'); // 実際のURLに変更してください
 
 // タイムゾーン設定
 date_default_timezone_set('Asia/Tokyo');
