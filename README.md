@@ -5,7 +5,6 @@ PHP と PostgreSQL を使用した、イベントやミーティングの日程�
 ![Static Badge](https://img.shields.io/badge/Linux-Debian-blue) 
 ![Static Badge](https://img.shields.io/badge/Language-PHP-red)
 ![Static Badge](https://img.shields.io/badge/DB-Postgresql-blue)
-![Static Badge](https://img.shields.io/badge/%E4%BA%8B%E6%A5%AD%E5%A0%B4-%E5%A4%A7%E5%BA%9C-blue)
 
 ![タイトルスクショ](./ss0.png)
 ![集計スクショ](./ss1.png)
